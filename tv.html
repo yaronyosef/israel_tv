@@ -11,8 +11,8 @@
 
     button {
       margin: 0px;
-      padding: 10px 68px;
-      font-size: 16px;
+      padding: 5%;
+      font-size: 200%;
     }
 
     video {
@@ -37,33 +37,44 @@
 </head>
 <body tabindex="0" onload="document.body.focus()">
 
-  <div style="
-    justify-content: space-around;
-    display: flex;
-    /* margin: 0 200px; */
-">
-    <button onclick="playStream(0)">11</button>
-    <button onclick="playStream(1)">12</button>
-    <button onclick="playStream(2)">13</button>
-    <button onclick="playStream(3)">14</button>
-  </div>
-
   <video id="video" autoplay muted controls 
   style="
-    width: 100%;
+    /* width: 100%; */
     /* height: 942px; */
-    margin: 0;
-"></video>
+    margin: 0px auto;
+"
+onclick="toggleButtonsVisibility()"
+></video>
+
+  <div id="buttons" style="display: none">
+
+    <div style="
+      justify-content: space-around;
+      display: flex;
+      position: absolute;
+      width: 100%;
+      top: 0;
+  ">
+      <button onclick="playStream(0)">11</button>
+      <button onclick="playStream(1)">12</button>
+      <button onclick="playStream(2)">13</button>
+      <button onclick="playStream(3)">14</button>
+    </div>
 
 
-  <div style="
-    justify-content: space-around;
-    display: flex;
-    /* margin: 0 200px; */
-">
-  <button id="fullscreenButton" onclick="toggleFullScreen()">Full Screen</button>
-  <button id="muteButton" onclick="toggleMute()">Mute</button>
-</div>
+    <div style="
+      justify-content: space-around;
+      display: flex;
+      position: absolute;
+      width: 100%;
+      bottom: 0;
+  ">
+    <button id="fullscreenButton" onclick="toggleFullScreen()">Full Screen</button>
+    <button id="muteButton" onclick="toggleMute()">Mute</button>
+  </div>
+
+  </div>
+
 
   <!-- <div id="keyDisplay">Last key: <span id="lastKey">None</span></div> -->
 
@@ -78,16 +89,24 @@
         return url;
     },
     () => 'https://d198ztbnlup2iq.cloudfront.net/out/v1/2d9050c90fb94df8b78d1d98306a1a65/index.m3u8',
-    () => 'https://ch14-channel14-content.akamaized.net/hls/live/2104807/CH14_CHANNEL14/2/streamPlaylist.m3u8'
+    () => 'https://n-121-5.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8?bitrate=928000&audioId=1&videoId=12',
+    // () => 'https://ch14-channel14-content.akamaized.net/hls/live/2104807/CH14_CHANNEL14/2/streamPlaylist.m3u8'
     ];
 
 
     const video = document.getElementById('video');
+
+    updateVideoSize();
+
+    const buttons = document.getElementById('buttons');
+
     const lastKeySpan = document.getElementById('lastKey');
     let hls;
     let currentStreamIndex = 0;
 
-    async function playStream (index) {
+    async function playStream(index) {
+        hideButtonsVisibility(false);
+
         currentStreamIndex = index;
         const src = await streams[index](); // ✨ Now call the function to get the URL
 
@@ -117,6 +136,7 @@
     }
 
     function toggleFullScreen() {
+        hideButtonsVisibility();
         const videoContainer = video;
 
         if (!document.fullscreenElement) {
@@ -133,9 +153,43 @@
     }
 
     function toggleMute() {
+        hideButtonsVisibility();
         video.muted = !video.muted;
         document.getElementById('muteButton').textContent = video.muted ? 'Unmute' : 'Mute';
+        updateVideoSize();
     }
+
+    function updateVideoSize() {
+      // const div = document.getElementById('myDiv');
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      if (width > height) {
+        // Set height to 100% of viewport height in pixels
+        video.style.height = height + 'px';
+        video.style.width = 'auto'; // Optional: reset width
+      } else {
+        // Set width to 100% of viewport width in pixels
+        video.style.width = width + 'px';
+        video.style.height = 'auto'; // Optional: reset height
+      }
+    }
+
+    function hideButtonsVisibility() {
+      buttons.style.display = 'none';
+    }
+
+    function toggleButtonsVisibility() {
+      if (buttons.style.display === 'none') {
+        buttons.style.display = 'block';
+      } else {
+        buttons.style.display = 'none';
+      }
+    }
+
+    // function toggleButtons() {
+    //   buttons.style.display = 'block';
+    // }
 
     window.addEventListener('load', () => {
         // playStream(0);
@@ -157,6 +211,14 @@
       } else if ([1, 2, 3, 4].includes(parseInt(e.key))) {
         playStream(parseInt(e.key) - 1);
       }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      // Wait a short moment to ensure the size has updated
+      setTimeout(updateVideoSize, 100); // 100ms delay is usually enough
+      setTimeout(updateVideoSize, 200); // 100ms delay is usually enough
+      setTimeout(updateVideoSize, 300); // 100ms delay is usually enough
+      // updateVideoSize();
     });
   </script>
 </body>

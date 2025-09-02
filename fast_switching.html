@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Switchable HLS Streams with Key Display</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+    }
+
+    button {
+      margin: 0px;
+      padding: 5%;
+      font-size: 200%;
+    }
+
+    video {
+      display: block;
+      /* margin: 20px 0; */
+      margin: 0px auto;
+    }
+
+    #keyDisplay {
+      font-size: 24px;
+      font-family: monospace;
+      padding: 10px;
+      border: 2px solid #444;
+      width: fit-content;
+      background: #f0f0f0;
+      margin-top: 10px;
+    }
+
+    video::-webkit-media-controls {
+        display: none !important;
+    }
+  </style>
+</head>
+<body tabindex="0" onload="document.body.focus()">
+
+  <div id="videoContainer" onclick="toggleButtonsVisibility()" style="position: relative; width: 100%; height: 100%;"></div>
+
+  <div id="buttons" style="display: none">
+
+    <div style="
+      justify-content: space-around;
+      display: flex;
+      position: absolute;
+      width: 100%;
+      top: 0;
+  ">
+      <button onclick="playStream(0)">11</button>
+      <button onclick="playStream(1)">12</button>
+      <button onclick="playStream(2)">13</button>
+      <button onclick="playStream(3)">14</button>
+    </div>
+
+
+    <div style="
+      justify-content: space-around;
+      display: flex;
+      position: absolute;
+      width: 100%;
+      bottom: 0;
+  ">
+    <button id="fullscreenButton" onclick="toggleFullScreen()">Full Screen</button>
+    <button id="muteButton" onclick="toggleMute()">Mute</button>
+  </div>
+
+  </div>
+
+
+  <!-- <div id="keyDisplay">Last key: <span id="lastKey">None</span></div> -->
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  const streams = [
+    () => 'https://kan11w.media.kan.org.il/hls/live/2105694/2105694/master.m3u8',
+    async () => {
+      const response = await fetch('https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=/stream/hls/live/2033791/k12n12wad/index.m3u8?b-in-range=0-700&rv=AKAMAI');
+      const json = await response.json();
+      const url = `https://mako-streaming.akamaized.net${json.tickets[0].url}&${json.tickets[0].ticket}`;
+      return url;
+    },
+    () => 'https://d198ztbnlup2iq.cloudfront.net/out/v1/2d9050c90fb94df8b78d1d98306a1a65/index.m3u8',
+    () => 'https://n-121-5.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8?bitrate=928000&audioId=1&videoId=12'
+  ];
+
+  const videoContainer = document.getElementById('videoContainer');
+  const buttons = document.getElementById('buttons');
+  let videos = [];
+  let hlsPlayers = [];
+  let currentStreamIndex = 0;
+
+  async function setupStreams() {
+    for (let i = 0; i < streams.length; i++) {
+      const video = document.createElement('video');
+      video.id = `video${i}`;
+      video.className = 'video';
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.controls = false;
+      // video.style.position = 'absolute';
+      // video.style.top = 0;
+      // video.style.left = 0;
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.display = 'none';
+
+      videoContainer.appendChild(video);
+      videos.push(video);
+
+      const src = await streams[i]();
+
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hlsPlayers.push(hls);
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src;
+        hlsPlayers.push(null); // Native playback
+      } else {
+        alert('Your browser does not support HLS.');
+        return;
+      }
+    }
+
+    // Show first stream
+    playStream(0);
+  }
+
+  function playStream(index) {
+    hideButtonsVisibility(false);
+    currentStreamIndex = index;
+
+    videos.forEach((video, i) => {
+      if (i === index) {
+        video.style.display = 'block';
+        video.muted = false;
+        video.play().catch(console.warn);
+      } else {
+        video.style.display = 'none';
+        video.muted = true;
+      }
+    });
+
+    document.getElementById('muteButton').textContent = videos[index].muted ? 'Unmute' : 'Mute';
+  }
+
+  function toggleMute() {
+    hideButtonsVisibility();
+    const video = videos[currentStreamIndex];
+    video.muted = !video.muted;
+    document.getElementById('muteButton').textContent = video.muted ? 'Unmute' : 'Mute';
+  }
+
+  function toggleFullScreen() {
+    hideButtonsVisibility();
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+        .then(() => document.getElementById('fullscreenButton').textContent = 'Exit Full Screen')
+        .catch(err => console.error(`Error attempting fullscreen: ${err.message}`));
+    } else {
+      document.exitFullscreen();
+      document.getElementById('fullscreenButton').textContent = 'Full Screen';
+    }
+  }
+
+  function updateVideoSize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    videos.forEach(video => {
+      if (width > height) {
+        video.style.height = height + 'px';
+        video.style.width = 'auto';
+      } else {
+        video.style.width = width + 'px';
+        video.style.height = 'auto';
+      }
+    });
+  }
+
+  function hideButtonsVisibility() {
+    buttons.style.display = 'none';
+  }
+
+  function toggleButtonsVisibility() {
+    buttons.style.display = buttons.style.display === 'none' ? 'block' : 'none';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageUp'].includes(e.key)) {
+      playStream((currentStreamIndex + 1) % streams.length);
+    } else if (['ArrowLeft', 'PageDown'].includes(e.key)) {
+      playStream((currentStreamIndex - 1 + streams.length) % streams.length);
+    } else if (e.key === 'f') {
+      toggleFullScreen();
+    } else if (e.key === 'm') {
+      toggleMute();
+    } else if ([1, 2, 3, 4].includes(parseInt(e.key))) {
+      playStream(parseInt(e.key) - 1);
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    setTimeout(updateVideoSize, 100);
+    setTimeout(updateVideoSize, 200);
+    setTimeout(updateVideoSize, 300);
+  });
+
+  window.addEventListener('load', async () => {
+    await setupStreams();
+    updateVideoSize();
+  });
+
+  window.addEventListener('resize', updateVideoSize);
+</script>
+</body>
+</html>
+
+
+
